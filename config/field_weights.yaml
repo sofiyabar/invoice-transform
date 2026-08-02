@@ -1,0 +1,10 @@
+# ASSUMPTION — веса критичных полей для Layer 2 (evals/layer2_document.py).
+# Критичные поля весят больше при расчёте weighted document score
+# и resolution rate / critical error rate.
+total: 0.0
+company: 0.0
+invoice_number: 0.0
+date: 0.0
+address: 0.0
+currency: 0.0
+line_items: 0.0

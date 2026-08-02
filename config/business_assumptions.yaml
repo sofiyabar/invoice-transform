@@ -1,0 +1,7 @@
+# ASSUMPTION — заполнить перед использованием в Layer 6 (evals/business_layer.py).
+hourly_rate_usd: 0.0
+avg_review_min: 0.0
+compute_cost_per_sec_usd: 0.0
+sla_latency_p95_seconds: 0.0
+sla_penalty_usd: 0.0
+volume_docs_per_period: 0.0
