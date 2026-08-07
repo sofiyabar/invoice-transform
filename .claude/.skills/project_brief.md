@@ -17,6 +17,30 @@
 
 ## Иерархия метрик (зафиксировано)
 
+### Layer 0 — Intent & Completeness Gate (собственный компонент поверх baseline, НЕ часть их кода)
+
+Baseline (`parseInvoiceFromText`) не имеет guardrail: любой текст, даже нерелевантный, приводит к попытке extraction и возможной галлюцинации JSON. Это найденный gap, который мы закрываем своим wrapper-слоем перед вызовом их функции.
+
+Два последовательных решения:
+
+**Шаг 1 — Is-invoice-intent classifier (бинарный)**
+- Определяет: хочет ли человек вообще создать инвойс (да/нет)
+- Ground truth: метка `is_invoice_request: true/false` на каждом синтетическом примере
+- Метрики: **False Positive rate** (создали инвойс из нерелевантного текста → галлюцинация, дорогая ошибка, риск отправки мусорного инвойса клиенту) и **False Negative rate** (отказали, хотя человек хотел → дешёвая ошибка, просто re-prompt/friction) считаются раздельно, не сворачиваются в один F1 — именно асимметрия FP/FN дальше напрямую формирует вход для Layer 6
+
+**Шаг 2 — Data sufficiency check (только если Шаг 1 = "да")**
+Три класса:
+- **No data** — нет ключевых полей вообще → нельзя генерировать, запросить заново
+- **Partial** — что-то есть, но не хватает критичного (например есть items, нет clientName) → нужно уточнение конкретно недостающего поля
+- **Complete** — всё есть → можно генерировать
+
+Метрика: multi-class classification quality (в т.ч. отдельно частота "переспросили зря" vs "пропустили нехватку данных" — тоже friction-сигнал) + отдельно точность указания, каких именно полей не хватает (это ближе к LLM-judge, чем к точной классификации).
+
+**Как встраивается в пайплайн**
+Layer 0 — фильтр на входе, ДО Layer 1. Только примеры со статусом "complete" идут в Layer 1-2 (field/document extraction accuracy). Примеры "no data"/"partial" получают отдельную ветку метрик (правильно ли распознан их статус), не проверяются на field accuracy.
+
+**Датасет должен включать отдельный сегмент** out-of-scope/nonsense текстов (не про инвойсы вообще) — специально для теста Шага 1.
+
 ### Layer 1 — Field-level
 Для каждого поля инвойса (сумма, дата, поставщик, номер, позиции, валюта):
 - Exact match — строгие поля (номер, валюта)
@@ -51,12 +75,14 @@
 
 | Business KPI | Формула | Вход из какого слоя |
 |---|---|---|
+| Hallucination / trust risk cost | `FP_rate × volume × avg_cost_per_bad_invoice_sent` | FP rate (intent gate) ← Layer 0 |
+| Friction / re-prompt cost | `(FN_rate + partial_misclass_rate) × volume × avg_reprompt_cost` | FN rate + partial misclassification ← Layer 0 |
 | Cost of manual review | `(1 − resolution_rate) × volume × avg_review_min × hourly_rate` | resolution_rate ← Layer 2 |
 | Expected cost of critical errors | `Σ (critical_error_rate_by_field × field_severity_$) × volume` | error_rate ← Layer 1, severity — конфиг-справочник (assumption, не measured) |
 | Segment risk exposure | `Σ_segment (volume_share × critical_error_rate_segment × avg_error_cost)` | error_rate by segment ← Layer 3 |
 | Infra/SLA cost | `latency_p95 × compute_cost_per_sec × volume` + штраф при превышении SLA | latency ← Layer 4 |
 | Churn risk proxy | `f(thumbs_down_rate)` — монотонная шкала "% users likely to abandon feature" | CSAT-proxy ← Layer 4 |
-| Net value at current quality | savings_from_automation − cost_of_manual_review − expected_error_cost − infra_cost | агрегация всего выше |
+| Net value at current quality | savings_from_automation − cost_of_manual_review − expected_error_cost − infra_cost − hallucination_cost − friction_cost | агрегация всего выше |
 
 Архитектурное требование: Layer 6 реализовать отдельным модулем (например `business_layer.py`), который принимает `metrics_dict` из нижних слоёв и возвращает `business_dict`. Полная трассируемость: любая $-цифра должна прослеживаться до конкретной eval-метрики. Severity weights — единственное место с "экспертным" вводом, явно помечено как assumption/config.
 
