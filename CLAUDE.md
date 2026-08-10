@@ -33,9 +33,9 @@ eval_runs/     # timestamped eval run outputs (gitignored)
 
 ## Known open decisions
 
-- **Base generator**: no implementation or approach chosen yet for `generator/base_generator.py`. Internet search for a suitable open-source "raw text → invoice JSON" repo was explicitly stopped by the user — do not resume that search unprompted. The adapter interface (`generate(raw_text: str) -> dict`) is fixed so this decision doesn't block other layers.
+- **Base generator**: implemented in `generator/base_generator.py` — prompt copied verbatim from Finvoice-AI's `aiController.js` (MIT license), calling Gemini (`google-genai` SDK, `gemini-2.5-flash`) via `GEMINI_API_KEY`. Parsing is intentionally fragile (strips ```json fences, no try/except around `json.loads`) to measure the real parse-failure rate rather than mask it.
 - **`notebooks/datasets_searching.ipynb`**: has an unresolved bug — assumes `priyank-m/SROIE_2019_text_recognition` has a `words` field, but it doesn't (`KeyError: 'words'`). Not fixed; kept as history. Don't invest further in SROIE without checking the brief's dataset priority list first (synthetic data is the primary MVP path, not SROIE).
-- **LLM provider**: Anthropic (Claude), for both the generator and the judges. `.env.example` expects `ANTHROPIC_API_KEY`.
+- **LLM provider**: split intentionally — generator uses Gemini (`GEMINI_API_KEY`), judges in `evals/` use Anthropic/Claude (`ANTHROPIC_API_KEY`). Both keys live in `.env.example`.
 
 ## Working in this repo
 

@@ -1,10 +1,7 @@
 # ASSUMPTION — заполнить реальными оценками перед использованием в Layer 6.
 # $ severity per field type: cost of a critical error in this field, used by
 # expected_cost_of_critical_errors in evals/business_layer.py.
-total: 0.0
-company: 0.0
-invoice_number: 0.0
-date: 0.0
+clientName: 0.0
+email: 0.0
 address: 0.0
-currency: 0.0
-line_items: 0.0
+items: 0.0

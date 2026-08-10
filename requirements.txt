@@ -5,6 +5,9 @@ numpy
 pyyaml
 python-dotenv
 
+# generator
+google-genai
+
 # eval
 deepeval
 anthropic
