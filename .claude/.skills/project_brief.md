@@ -55,6 +55,9 @@ Layer 0 — фильтр на входе, ДО Layer 1. Только приме�
 - **Critical error rate** = % документов с ошибкой в критичном поле
 
 ### Layer 3 — Segment-level
+
+> **⚠️ Реализовано иначе, чем описано ниже.** В коде отдельного `layer3_segment.py` нет — эта логика слита в `evals/layer2_document.py::by_group()` (см. CLAUDE.md, "Known open decisions" и CHANGELOG.md). Раздел ниже оставлен как исходная постановка задачи, не как актуальная архитектура.
+
 Те же метрики (resolution rate, error rate) в разрезе по:
 - сложности входа (чистый / шумный / edge-case)
 - типу документа (email, chat-текст и т.п.)
