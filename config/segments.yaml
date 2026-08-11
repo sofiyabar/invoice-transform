@@ -1,0 +1,12 @@
+# ASSUMPTION — таксономия сегментов для сегментного разреза Document Accuracy
+# (evals/document_accuracy.py::by_group(), бывший отдельный Layer 3)
+# и генерации синтетики (data/synth_generate.py).
+segments:
+  - clean
+  - noisy
+  - edge_case
+
+doc_types:
+  - email
+  - chat
+  - receipt_ocr

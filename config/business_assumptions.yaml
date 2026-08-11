@@ -1,0 +1,20 @@
+# ASSUMPTION — confirmed with the user for this portfolio project (see
+# conversation record "переходим к layer 6"), not measured from a real
+# business. Illustrative figures for a small-business invoicing SaaS,
+# consistent with the dataset's flavor (freelance/small-service invoices).
+hourly_rate_usd: 25
+avg_review_min: 3
+volume_docs_per_period: 1000
+
+# Unit-economics P&L defaults (see conversation record "переделай слой Layer 6
+# в интерактивный P&L дашборд Unit Economics") -- also the default values for
+# the dashboard's sidebar what-if sliders, which the user adjusts live without
+# editing this file.
+retention_value_per_invoice: 0.50
+ai_inference_cost_per_invoice: 0.02
+
+# NOT gathered yet -- infra_sla_cost is not computed in evals/business_layer.py
+# until these are filled in with real or agreed illustrative values.
+compute_cost_per_sec_usd: 0.0
+sla_latency_p95_seconds: 0.0
+sla_penalty_usd: 0.0

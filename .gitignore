@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+
+data/raw/
+data/synthetic/
+data/processed/
+eval_runs/*
+!eval_runs/.gitkeep

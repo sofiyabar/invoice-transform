@@ -1,0 +1,3 @@
+-- Databricks Free Edition: thin aggregated table for the SQL layer.
+-- TODO: define table(s) loaded from eval_runs/ aggregates (not raw LLM
+-- traffic) — keep this a small, deliberate slice, not the main compute path.

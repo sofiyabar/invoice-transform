@@ -1,0 +1,11 @@
+# NOT USED — was Document Accuracy's per-field weighting scheme (0-1, relative),
+# removed: an invented weighting with no $ grounding wasn't a useful metric on
+# its own (see evals/document_accuracy.py module docstring, conversation record
+# "тогда нужно это называть не весами, а стоимость убытков"). Document Accuracy
+# now reports plain document counts (resolution rate / critical error rate)
+# instead. If a real $ cost per field is ever supplied, it belongs in
+# config/severity_weights.yaml for Business Impact, not here.
+clientName: 0.0
+email: 0.0
+address: 0.0
+items: 0.0

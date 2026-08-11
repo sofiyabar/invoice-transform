@@ -1,0 +1,26 @@
+# core
+pydantic
+pandas
+numpy
+pyyaml
+python-dotenv
+
+# generator
+google-genai
+
+# eval
+deepeval
+anthropic
+scipy
+scikit-learn
+
+# dashboard
+streamlit
+plotly
+
+# data
+datasets
+faker
+
+# dev
+pytest
