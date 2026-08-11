@@ -349,3 +349,75 @@
   собственно мусор/malformed input (`gibberish`/`markup_or_code`/`spam`/
   `wrong_function`). Плюс раздел про сгенерированные артефакты
   (`generator_predictions.jsonl`, `eval_runs/*.json`) — где что лежит.
+
+### 2026-08-12
+- **Слои переименованы из номеров в то, что они делают** (модули, тесты,
+  скрипты — `evals/`, `tests/`, `scripts/`), таблица соответствия ушла в
+  `CLAUDE.md`:
+  - `layer0_intent_gate.py` → `intake_intent_gate.py`
+  - `layer0_completeness_gate.py` → `intake_completeness_gate.py`
+  - `layer1_field.py` → `field_accuracy.py`
+  - `layer2_document.py` → `document_accuracy.py`
+  - `layer4_production_sim.py` → `production_simulation.py`
+  - `business_layer.py` → `business_impact.py`
+  - `run_layer0_full.py` → `run_intake_intent_full.py`,
+    `run_layer0_step2_full.py` → `run_intake_completeness_full.py`
+  - Причина: номера слоёв из брифа перестали что-либо объяснять сами по
+    себе (Layer 3 уже слит в Layer 2, Layer 5 удалён — см. ниже), имя по
+    смыслу читается без переключения на таблицу брифа.
+- **Layer 3 (сегменты) слит в Document Accuracy**: `evals/layer3_segment.py`
+  удалён, разбивка по сегментам/типам документа теперь —
+  `evals/document_accuracy.py::by_group()`. Не новая логика, перенос уже
+  случившегося решения (см. `CLAUDE.md`, раздел "Known open decisions") в
+  код и историю изменений.
+- **Layer 5 (статистика) удалён целиком**: `evals/layer5_statistics.py`,
+  `tests/test_layer5_statistics.py`, `scripts/run_stability_check.py` —
+  удалены, не заменены. Был реализован (bootstrap CI на `resolution_rate`,
+  проверка значимости сегментов относительно baseline), но не отвечал на
+  реальный вопрос проекта: 97%/76% шумных/edge-записей и так отсекаются
+  Intake-гейтом до полной экстракции, а стохастического judge, чью
+  стабильность стоило бы проверять, в проекте нет. `metrics_dict` больше не
+  содержит ключа под этот слой вообще (не `null` — ключа нет).
+- **Production Simulation дописан** (`evals/production_simulation.py`,
+  из explicitly-labeled стабов):
+  - `latency_stats(latencies_ms)` — рабочая реализация (p50/p95/mean) на
+    случай, когда прогон начнёт писать реальное время на вызов; пока нигде
+    не вызывается — ни в одном прогоне нет таймингов
+    (`generator_predictions.jsonl` без поля времени).
+  - `latency_estimate()` — явно помеченная оценка-заглушка
+    (`LATENCY_ESTIMATE_MS`, типичное время ответа Gemini 2.5 Flash на
+    короткий extraction-промпт), возвращает `is_estimate: True`.
+  - `csat_proxy_stub(critical_error_rate)` — прокси thumbs-down rate,
+    экстраполированный из `critical_error_rate` Document Accuracy +
+    `CSAT_PROXY_PESSIMISM_DELTA` (0.05, предположение, что независимый
+    ревьюер ловит чуть больше, чем чисто критичные поля). Помечен
+    `is_stub: True` — не вызов `reviewer_judge.py` (тот всё ещё не
+    реализован, нужен `ANTHROPIC_API_KEY`).
+  - `batch_trend()` — сознательно оставлен `NotImplementedError`: был
+    только один полный прогон датасета, тренд по одному прогону — это шум,
+    а не тренд; возвращаться к этому, когда появится второй реальный прогон
+    (например, после правки промпта) для сравнения.
+- **Business Impact дописан** (`evals/business_impact.py`,
+  `compute_business_impact()`): реализована вся P&L-формула из
+  интерактивного дашборда Unit Economics —
+  `Net AI Profit = Gross LTV Value - AI Run Cost - Manual Review OPEX - Quality Risk Cost`.
+  Каждая денежная величина возвращается вместе с формулой и источником
+  каждого входа (`metrics_dict`-путь, `config`-ключ или "sidebar" — живой
+  override того же конфиг-ключа), чтобы ничего не было хардкодным числом
+  без trace — см. `tests/test_business_impact.py`. Модуль по-прежнему не
+  считает ни одной eval-метрики сам, только читает уже посчитанное из
+  `metrics_dict` + `config/*.yaml` (граница модулей из `CLAUDE.md`
+  соблюдена). Не реализовано (нет собранных бизнес-инпутов):
+  `infra_sla_cost`, `churn_risk_proxy`, `segment_risk_exposure` — возвращаются
+  с `value_usd: None` и явной причиной.
+- **`dashboard/app.py` расширен** (+365 строк) под отрисовку доработанных
+  секций Production Simulation и Business Impact (интерактивные what-if
+  инпуты в сайдбаре пересчитывают P&L живьём через ту же
+  `compute_business_impact()`, что и обычный прогон).
+- **`ABOUT.md` добавлен** — человекочитаемое резюме проекта (цель, шаги,
+  что показывает дашборд) для читателя со стороны, не из кодовой базы.
+- **Документация синхронизирована** с переименованием и новым состоянием:
+  `CLAUDE.md`, `README.md`, `DATA_MAP.md`, `config/*.yaml` (комментарии),
+  `.claude/.skills/project_brief.md` (одна строка — аннотация про то, что
+  брифовская нумерация слоёв больше не совпадает с кодом).
+  - Коммит: `6275275`.
