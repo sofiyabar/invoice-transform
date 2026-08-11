@@ -31,7 +31,7 @@ class InvoiceItem(BaseModel):
 
 
 class InvoiceFields(BaseModel):
-    """Ground-truth / predicted invoice fields (Layer 1 scoring target)."""
+    """Ground-truth / predicted invoice fields (field-accuracy scoring target)."""
 
     clientName: str | None = None
     email: str | None = None
@@ -51,7 +51,7 @@ class InvoiceRecord(BaseModel):
 
 
 class IntentGateRecord(BaseModel):
-    """One evaluation example for Layer 0, Step 1 (is-invoice-intent
+    """One evaluation example for Intake Gate, Step 1 (is-invoice-intent
     classifier). Covers every row of the dataset, invoice and non-invoice
     alike -- distinct from InvoiceRecord, which requires real ground_truth
     fields that non-invoice rows don't have."""
@@ -70,7 +70,7 @@ CRITICAL_FIELDS = ("clientName", "items", "address")
 
 
 class SufficiencyGateRecord(BaseModel):
-    """One evaluation example for Layer 0, Step 2 (data sufficiency check).
+    """One evaluation example for Intake Gate, Step 2 (data sufficiency check).
     Only applies to rows where is_invoice_request is True -- sufficiency
     doesn't mean anything for non-invoice text."""
 

@@ -2,7 +2,7 @@
 data/synthetic/eval_dataset.jsonl — NOT part of the eval suite (real, paid,
 non-deterministic Gemini calls). Goal: measure real parse failure rate and spot
 format-only mismatches (e.g. "" vs null, int vs float) before they get treated
-as real extraction errors in evals/layer1_field.py.
+as real extraction errors in evals/field_accuracy.py.
 
 eval_dataset.jsonl mixes two record shapes:
   - invoice rows: segment in {clean, noisy, edge}, ground_truth populated.

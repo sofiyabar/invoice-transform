@@ -11,9 +11,14 @@
 | Конфиг | параметры, заданные вручную, не выводимые из других данных | `config/*.yaml` |
 | Результат оценки | числа, полученные при сравнении предсказаний с правильными ответами | `eval_runs/*_metrics.json` |
 
-Результат оценки строится из Датасета и Предсказаний (плюс Конфиг — для ещё не реализованной
-части, Layer 6) и отображается на дашборде. Разделы 2–5 описывают каждый вид данных подробно,
-раздел 6 — как дашборд использует результат оценки.
+Результат оценки строится из Датасета и Предсказаний (плюс Конфиг — для Business Impact) и
+отображается на дашборде. Разделы 2–5 описывают каждый вид данных подробно, раздел 6 — как
+дашборд использует результат оценки.
+
+Разделы `metrics_dict` раньше назывались `layer0`…`layer6` (по номеру), теперь — по смыслу:
+`intake` (был Layer 0), `field_accuracy` (Layer 1), `document_accuracy` (Layer 2, включает бывший
+Layer 3), `production_simulation` (Layer 4), `business_impact` (Layer 6). Layer 5 удалён — ключа
+для него больше нет вообще.
 
 ## 2. Датасет — `data/synthetic/eval_dataset.jsonl`
 
@@ -67,18 +72,19 @@ compute-поля — ещё нет (`0.0`).
 metrics_dict
 ├── run_id                 когда прогон запущен
 ├── config                  как прогон был запущен (сколько записей, какая модель)
-├── layer0
+├── intake
 │   ├── intent_gate            насколько верно определено is_invoice_request (§5.1)
 │   └── completeness_gate      насколько верно определено sufficiency_label (§5.2)
-├── layer1                   насколько верно извлечены поля ground_truth (§5.3)
-├── layer2                   готовность документа целиком (§5.4)
-├── layer4                   производственная симуляция (§5.5)
-└── layer6                   деньги — не реализовано (§5.6)
+├── field_accuracy            насколько верно извлечены поля ground_truth (§5.3)
+├── document_accuracy         готовность документа целиком (§5.4)
+├── production_simulation     производственная симуляция (§5.5)
+└── business_impact           деньги (§5.6)
 ```
 
-(`layer3`, `layer5` всегда пустые — их содержимое перенесено в `layer2`.)
+(Бывшие `layer3`/`layer5` не существуют как ключи вообще — их содержимое перенесено в
+`document_accuracy`, либо удалено.)
 
-### 5.1 `layer0.intent_gate`
+### 5.1 `intake.intent_gate`
 
 | Поле | Значение |
 |---|---|
@@ -86,7 +92,7 @@ metrics_dict
 | `aggregate.fp_rate` | доля не-инвойсов, ошибочно принятых за инвойс-запрос — дорогая ошибка |
 | `aggregate.fn_rate` | доля инвойс-запросов, ошибочно отклонённых — дешёвая ошибка |
 
-### 5.2 `layer0.completeness_gate`
+### 5.2 `intake.completeness_gate`
 
 | Поле | Значение |
 |---|---|
@@ -95,14 +101,14 @@ metrics_dict
 | `aggregate_sufficiency.asked_unnecessarily_rate` | доля случаев, где данных хватало, а система попросила уточнить |
 | `aggregate_missing_fields.{precision,recall,f1}` | точность указания, каких именно полей не хватает |
 
-### 5.3 `layer1` — сравнение `prediction` с `ground_truth`
+### 5.3 `field_accuracy` — сравнение `prediction` с `ground_truth`
 
 | Поле | Значение |
 |---|---|
 | `field_scores.<поле>.error_rate` | доля записей, где это поле (`clientName`, `email`, `address`, `items.*`) не совпало с `ground_truth` |
 | `parse_failure_rate` | доля предсказаний, которые вообще нельзя прочитать как `{clientName, email, address, items}` |
 
-### 5.4 `layer2` — готовность документа целиком
+### 5.4 `document_accuracy` — готовность документа целиком
 
 Критичными считаются `clientName` и `items` — ошибка в них делает документ непригодным без
 проверки человеком; `email`/`address` некритичны.
@@ -114,7 +120,7 @@ metrics_dict
 | `resolution_rate_ci` | диапазон, в который с высокой вероятностью попадает истинное значение `resolution_rate` на полной генеральной совокупности |
 | `by_segment`, `by_doc_type` | те же поля, посчитанные отдельно для каждого значения `segment`/`style` из раздела 2, плюс `p_value_vs_baseline` — вероятность, что разница со значением-базой случайна |
 
-### 5.5 `layer4` — производственная симуляция
+### 5.5 `production_simulation` — производственная симуляция
 
 | Поле | Значение |
 |---|---|
@@ -122,23 +128,39 @@ metrics_dict
 | `latency.{p50,p95,mean}` | время обработки одной записи, в миллисекундах — оценка, не измерено |
 | `csat_proxy.thumbs_down_rate` | доля предположительно недовольных пользователей, вычисленная из `critical_error_rate` — не опрос реальных людей |
 
-### 5.6 `layer6` — деньги
+### 5.6 `business_impact` — деньги
 
-Не реализовано. Должен использовать `severity_weights.yaml` и `business_assumptions.yaml`
-(раздел 4) вместе с `layer1`/`layer2`, чтобы посчитать стоимость ошибок и экономию. Формулы —
-`.claude/.skills/project_brief.md`, раздел Layer 6.
+Реализовано (`evals/business_impact.py::compute_business_impact()`). Использует
+`severity_weights.yaml` и `business_assumptions.yaml` (раздел 4) вместе с `field_accuracy`/
+`document_accuracy`, чтобы посчитать P&L. Формула:
+
+```
+net_ai_profit = gross_ltv_value − ai_run_cost − manual_review_opex − quality_risk_cost
+```
+
+| Поле | Значение |
+|---|---|
+| `gross_ltv_value` | `monthly_volume × (1 − overall_error_rate) × retention_value_per_invoice` |
+| `ai_run_cost` | `monthly_volume × ai_inference_cost_per_invoice` |
+| `manual_review_opex` | `(1 − resolution_rate) × monthly_volume × (avg_review_min / 60) × operator_hourly_rate` |
+| `quality_risk_cost` | `Σ(field_error_rate × field_severity_usd) × monthly_volume`, плюс разбивка `by_field` |
+| `net_ai_profit` | см. формулу выше |
+| `infra_sla_cost` / `churn_risk_proxy` / `segment_risk_exposure` | не реализовано (`value_usd: null` + `reason`) — нет собранных бизнес-вводных |
+
+`monthly_volume`/`operator_hourly_rate`/`retention_value_per_invoice`/`ai_inference_cost_per_invoice`
+по умолчанию берутся из `business_assumptions.yaml`, но дашборд даёт их менять живыми ползунками
+в сайдбаре (`params`) — формула та же, входы другие. Каждая $-цифра несёт `source`, указывающий на
+конкретный ключ `metrics_dict.*` или `config.*` (см. `tests/test_business_impact.py`).
 
 ## 6. Дашборд
 
 | Вкладка | Поле `metrics_dict` | Что показывает |
 |---|---|---|
-| Layer 0 | `layer0` | §5.1–5.2 |
-| Layer 1 | `layer1` | §5.3 |
-| Layer 2 | `layer2` | §5.4 |
-| Layer 3 | — | пусто, см. Layer 2 |
-| Layer 4 | `layer4` | §5.5 |
-| Layer 5 | — | пусто, см. Layer 2 |
-| Layer 6 | — | §5.6, не реализовано |
+| Intake Gate | `intake` | §5.1–5.2 |
+| Field Accuracy | `field_accuracy` | §5.3 |
+| Document Accuracy | `document_accuracy` | §5.4 (включает бывший Layer 3 — разрез по сегментам/типам) |
+| Production Simulation | `production_simulation` | §5.5 |
+| Business Impact | `business_impact` | §5.6, живой P&L-симулятор |
 
 ## 7. Где искать больше
 

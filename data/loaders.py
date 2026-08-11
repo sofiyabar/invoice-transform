@@ -53,9 +53,9 @@ def _achievable_ground_truth(row: dict) -> dict:
     row_000_noisy_a's raw_text never mentions an email at all; the generator
     correctly returned "" and got scored wrong against the original email.
 
-    This null-out/drop step builds the ground truth Layer 1 should actually
-    score against: what a perfect extractor operating on raw_text alone
-    could produce. See conversation record ("почему у тебя все ошибки?").
+    This null-out/drop step builds the ground truth field accuracy should
+    actually score against: what a perfect extractor operating on raw_text
+    alone could produce. See conversation record ("почему у тебя все ошибки?").
     """
     gt = dict(row["ground_truth"])
     for field in row.get("removed_fields") or []:
@@ -69,14 +69,14 @@ def _achievable_ground_truth(row: dict) -> dict:
 
 
 def load_synthetic_extraction(path: Path = SYNTHETIC_EVAL_DATASET) -> list[InvoiceRecord]:
-    """Rows of eval_dataset.jsonl usable for Layer 1-3 (field/document/segment)
+    """Rows of eval_dataset.jsonl usable for field/document/segment accuracy
     scoring: those with a real ground_truth, i.e. segment in {clean, noisy,
-    edge_case}. Excludes Layer 0 rows (out-of-scope / no-data / robustness),
+    edge_case}. Excludes Intake rows (out-of-scope / no-data / robustness),
     which carry ground_truth=null and belong to the intent-gate eval instead.
 
     ground_truth is the "achievable" version (see _achievable_ground_truth),
-    not the raw original invoice -- Layer 1 must never score a field/item
-    that raw_text never mentioned in the first place.
+    not the raw original invoice -- field accuracy must never score a
+    field/item that raw_text never mentioned in the first place.
     """
     records: list[InvoiceRecord] = []
     with open(path, encoding="utf-8") as f:
@@ -101,11 +101,11 @@ def load_synthetic_extraction(path: Path = SYNTHETIC_EVAL_DATASET) -> list[Invoi
 
 
 def load_intent_gate_dataset(path: Path = SYNTHETIC_EVAL_DATASET) -> list[IntentGateRecord]:
-    """All 600 rows of eval_dataset.jsonl for Layer 0, Step 1 (is-invoice-intent
-    classifier) eval. Unlike load_synthetic_extraction(), this does NOT filter
-    by ground_truth -- Layer 0's whole job is telling invoice rows apart from
-    non-invoice ones, so it needs both classes, not just the ones with real
-    ground_truth fields.
+    """All 600 rows of eval_dataset.jsonl for Intake Gate, Step 1
+    (is-invoice-intent classifier) eval. Unlike load_synthetic_extraction(),
+    this does NOT filter by ground_truth -- Intake's whole job is telling
+    invoice rows apart from non-invoice ones, so it needs both classes, not
+    just the ones with real ground_truth fields.
     """
     records: list[IntentGateRecord] = []
     with open(path, encoding="utf-8") as f:
@@ -126,7 +126,7 @@ def load_intent_gate_dataset(path: Path = SYNTHETIC_EVAL_DATASET) -> list[Intent
 
 
 def load_sufficiency_gate_dataset(path: Path = SYNTHETIC_EVAL_DATASET) -> list[SufficiencyGateRecord]:
-    """Rows where is_invoice_request is True, with Layer 0 Step 2 ground
+    """Rows where is_invoice_request is True, with Intake Step 2 ground
     truth: sufficiency_label plus which CRITICAL_FIELDS are actually missing
     from the raw text (derived from removed_fields/naturally_missing_fields
     the same way sufficiency_label itself was recomputed -- see CHANGELOG.md
@@ -140,7 +140,8 @@ def load_sufficiency_gate_dataset(path: Path = SYNTHETIC_EVAL_DATASET) -> list[S
     ground_truth to remove fields FROM), NOT because nothing is missing --
     treating that as "nothing missing" silently mislabeled 54 rows as
     "complete" in the first recompute pass. See CHANGELOG.md 2026-08-10,
-    "Layer 0 Step 2 -- ground_truth=null bug".
+    "Layer 0 Step 2 -- ground_truth=null bug" (as CHANGELOG.md still calls it,
+    predating this rename).
     """
     records: list[SufficiencyGateRecord] = []
     with open(path, encoding="utf-8") as f:

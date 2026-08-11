@@ -1,25 +1,29 @@
-"""Layer 1 — Field-level scoring.
+"""Field Accuracy (formerly "Layer 1") — field-level scoring.
 
 JD metric: "error rate per field type".
 Strict fields (email) -> exact match.
 Numeric fields (items[].quantity, items[].unitPrice) -> tolerance match.
-items[].name -> simple normalized text match (see _score_item_name), NOT an
-LLM judge -- empirically, 96% of real ground-truth/prediction item-name
-pairs in this dataset resolve via exact-after-normalization or a
-singular/plural or substring variant (1028/1069 pairs measured, see
-conversation record "покажи что сейчас бывает в name"). A judge call isn't
-worth the ANTHROPIC_API_KEY dependency for the ~4% left over.
-Free-text fields (clientName, address) -> LLM-as-judge semantic match, see
-evals/judges/field_judge.py -- these stay judge-based: person/company names
-and addresses don't have items[].name's narrow "plural or substring" shape.
+Free-text fields (clientName, address, items[].name) -> simple normalized
+text match (see _score_fuzzy_text), NOT an LLM judge. Empirically, on this
+dataset's real generator predictions: 231/237 clientName pairs, 134/134
+address pairs, and 1028/1069 item-name pairs resolve via exact-after-
+normalization, a punctuation/whitespace variant, a singular/plural variant,
+or one value containing the other (see conversation record "clientName и
+address тоже почини так же" / "покажи что сейчас бывает в name"). The
+remaining few-percent gap (mostly a dropped last name or a genuine
+paraphrase like "Air Duct Cleaning" / "duct cleanings") is a known, accepted
+trade-off for not depending on ANTHROPIC_API_KEY -- evals/judges/field_judge.py
+still exists and works if a judge-based re-score of that residual gap is
+ever wanted, it's just not in this module's default path.
 
 Two-step API:
   score_fields()      -- per-record, per-field-type scores (0-1) for one
                           (ground_truth, prediction) pair.
   aggregate_scores()  -- rolls per-record scores up across a dataset into
-                          the actual Layer 1 output: mean score + error rate
-                          per field type. This is what feeds Layer 2/6 and
-                          the dashboard.
+                          the actual field-accuracy output: mean score +
+                          error rate per field type. This is what feeds
+                          document accuracy / business impact and the
+                          dashboard.
 
 Item alignment assumption: ground_truth.items and prediction.items are
 compared pairwise by index (no fuzzy re-ordering/matching of line items). A
@@ -28,15 +32,15 @@ than silently truncating the shorter list — masking it would understate the
 real error rate.
 """
 
+import re
+
 from data.schema import InvoiceFields
-from evals.judges.field_judge import judge_field_match
 
 NUMERIC_TOLERANCE = 0.01  # absolute; quantity/unitPrice are already clean floats in ground truth
-SEMANTIC_FIELDS = ("clientName", "address")  # judge-based
-FUZZY_TEXT_FIELDS = ("items.name",)  # simple normalized match, no judge
+FUZZY_TEXT_FIELDS = ("clientName", "address", "items.name")  # simple normalized match, no judge
 EXACT_FIELDS = ("email",)
 NUMERIC_FIELDS = ("items.quantity", "items.unitPrice")
-FIELD_TYPES = (*EXACT_FIELDS, *SEMANTIC_FIELDS, *FUZZY_TEXT_FIELDS, *NUMERIC_FIELDS, "items.count")
+FIELD_TYPES = (*EXACT_FIELDS, *FUZZY_TEXT_FIELDS, *NUMERIC_FIELDS, "items.count")
 
 
 def _normalize_str(v: str | None) -> str | None:
@@ -44,6 +48,14 @@ def _normalize_str(v: str | None) -> str | None:
         return None
     v = v.strip()
     return v.lower() if v else None
+
+
+def _fuzzy_normalize(v: str) -> str:
+    """Extra normalization on top of _normalize_str, for fuzzy text fields
+    only -- NOT used for email, where a period is meaningful (john.doe@x.com
+    != johndoe@x.com)."""
+    v = re.sub(r"[.,]", "", v)
+    return re.sub(r"\s+", " ", v).strip()
 
 
 def _singularize(s: str) -> str:
@@ -75,17 +87,20 @@ def _score_numeric(ground_truth: float | None, prediction: float | None) -> floa
     return 1.0 if abs(float(ground_truth) - pred) <= NUMERIC_TOLERANCE else 0.0
 
 
-def _score_item_name(ground_truth: str | None, prediction: str | None) -> float:
-    """Judge-free item-name match: exact after normalization, a singular/
-    plural variant of each other, or one name contains the other (e.g.
-    "Revision" / "Revisions", "Website Development" / "website dev"). Real
-    paraphrases that fail all three ("Air Duct Cleaning" / "duct cleanings")
-    are scored 0 -- a known, accepted gap, not guessed via a judge call."""
+def _score_fuzzy_text(ground_truth: str | None, prediction: str | None) -> float:
+    """Judge-free free-text match, used for clientName/address/items.name
+    alike: exact after normalization (case, punctuation, whitespace), a
+    singular/plural variant, or one value containing the other (e.g.
+    "Wardiere Inc." / "Wardiere Inc", "123 Anywhere St, Any City" /
+    "123 anywhere st. any city", "Website Development" / "website dev").
+    A real paraphrase that fails all three is scored 0 -- see module
+    docstring for the measured coverage/gap."""
     gt, pred = _normalize_str(ground_truth), _normalize_str(prediction)
     if gt is None and pred is None:
         return 1.0
     if gt is None or pred is None:
         return 0.0
+    gt, pred = _fuzzy_normalize(gt), _fuzzy_normalize(pred)
     if gt == pred:
         return 1.0
     if _singularize(gt) == _singularize(pred):
@@ -95,50 +110,16 @@ def _score_item_name(ground_truth: str | None, prediction: str | None) -> float:
     return 0.0
 
 
-def _score_semantic(
-    field_name: str, ground_truth: str | None, prediction: str | None, use_judge: bool = True
-) -> float | None:
-    """Returns None (not 0.0) when both values are non-empty but the judge is
-    disabled -- "not evaluated" must never collapse into "wrong", or a
-    disabled judge would silently inflate the error rate."""
-    gt, pred = _normalize_str(ground_truth), _normalize_str(prediction)
-    if gt is None and pred is None:
-        return 1.0
-    if gt is None or pred is None:
-        return 0.0
-    if not use_judge:
-        return None
-    # judge on the original (non-lowercased) strings — casing may carry signal
-    return judge_field_match(field_name, ground_truth.strip(), prediction.strip())
-
-
-def score_fields(
-    ground_truth: InvoiceFields, prediction: InvoiceFields, use_semantic_judge: bool = True
-) -> dict[str, float]:
+def score_fields(ground_truth: InvoiceFields, prediction: InvoiceFields) -> dict[str, float]:
     """Per-record score (0-1) for each field type. Missing keys mean the field
     type didn't apply to this record (e.g. no items in ground truth and none
     predicted -> items.* keys still present at 1.0 via the None/None rule,
-    except when there simply are no line items to score at all).
-
-    use_semantic_judge=False skips LLM-judge calls entirely, for clientName/
-    address only (items.name never needs it, see module docstring): trivial
-    cases (both missing, or exactly one missing) are still scored without
-    it, but non-trivial semantic comparisons are left out of the returned
-    dict rather than guessed -- see _score_semantic. Use this when
-    ANTHROPIC_API_KEY isn't available and you still want the exact/
-    tolerance/item-name fields scored.
-    """
+    except when there simply are no line items to score at all)."""
     scores: dict[str, float] = {}
 
     scores["email"] = _score_exact(ground_truth.email, prediction.email)
-    client_name_score = _score_semantic(
-        "clientName", ground_truth.clientName, prediction.clientName, use_semantic_judge
-    )
-    if client_name_score is not None:
-        scores["clientName"] = client_name_score
-    address_score = _score_semantic("address", ground_truth.address, prediction.address, use_semantic_judge)
-    if address_score is not None:
-        scores["address"] = address_score
+    scores["clientName"] = _score_fuzzy_text(ground_truth.clientName, prediction.clientName)
+    scores["address"] = _score_fuzzy_text(ground_truth.address, prediction.address)
 
     gt_items = ground_truth.items or []
     pred_items = prediction.items or []
@@ -149,14 +130,12 @@ def score_fields(
         name_scores, qty_scores, price_scores = [], [], []
         for i in range(n):
             gt_item, pred_item = gt_items[i], pred_items[i]
-            name_scores.append(_score_item_name(gt_item.name, pred_item.name))
+            name_scores.append(_score_fuzzy_text(gt_item.name, pred_item.name))
             qty_scores.append(_score_numeric(gt_item.quantity, pred_item.quantity))
             price_scores.append(_score_numeric(gt_item.unitPrice, pred_item.unitPrice))
         # unmatched items beyond the shorter list are extra errors, not free
         # passes -- and always trivially scorable (one side has no
-        # counterpart at all: an omitted or hallucinated whole item), and
-        # none of items.name/quantity/unitPrice need a judge, so this always
-        # applies regardless of use_semantic_judge.
+        # counterpart at all: an omitted or hallucinated whole item)
         extra = max(len(gt_items), len(pred_items)) - n
         name_scores += [0.0] * extra
         qty_scores += [0.0] * extra
@@ -172,10 +151,8 @@ def score_fields(
 
 
 def aggregate_scores(per_record_scores: list[dict[str, float]]) -> dict[str, dict[str, float]]:
-    """Layer 1 output: for each field type, mean score, error rate (score < 1
-    treated as an error — semantic judge scores are continuous, so this is a
-    stricter reading than the raw mean) and n (records where the field type
-    was applicable)."""
+    """Field-accuracy output: for each field type, mean score, error rate (score < 1
+    treated as an error) and n (records where the field type was applicable)."""
     result: dict[str, dict[str, float]] = {}
     for field in FIELD_TYPES:
         values = [rec[field] for rec in per_record_scores if field in rec]

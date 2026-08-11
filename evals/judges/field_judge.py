@@ -1,4 +1,4 @@
-"""DeepEval GEval judge for Layer 1 free-text field semantic match
+"""DeepEval GEval judge for Field Accuracy's free-text field semantic match
 (clientName, address, items[].name).
 
 Uses deepeval.metrics.GEval with deepeval's built-in AnthropicModel wrapper
@@ -72,7 +72,7 @@ def judge_field_match(
     """Returns a 0-1 semantic match score for one free-text field value.
 
     Callers should short-circuit the trivial None/None and None/value cases
-    themselves (see evals/layer1_field.py) — this function assumes both
+    themselves (see evals/field_accuracy.py) — this function assumes both
     ground_truth and prediction are non-empty strings and always calls the
     judge, so it can be tested/used in isolation.
     """

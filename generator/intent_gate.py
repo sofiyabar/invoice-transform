@@ -1,14 +1,14 @@
-"""Layer 0, Step 1's underlying decision: does this text represent a request
-to create an invoice at all?
+"""Intake Gate, Step 1's underlying decision: does this text represent a
+request to create an invoice at all?
 
 This is our own component, on top of the copied Finvoice-AI baseline in
 base_generator.py -- not part of their code (see project_brief.md, "Layer 0 —
-Intent & Completeness Gate"). It lives in generator/, not evals/, because it
-*produces* a decision that would gate the real pipeline (skip generation
-entirely on a "no" and avoid a hallucinated invoice), the same role
-base_generator.py plays -- it isn't a judge/metric that grades an existing
-output. Scoring this decision against ground truth (accuracy, FP/FN rate) is
-a separate concern, see evals/layer0_intent_gate.py.
+Intent & Completeness Gate", now called Intake Gate). It lives in generator/,
+not evals/, because it *produces* a decision that would gate the real
+pipeline (skip generation entirely on a "no" and avoid a hallucinated
+invoice), the same role base_generator.py plays -- it isn't a judge/metric
+that grades an existing output. Scoring this decision against ground truth
+(accuracy, FP/FN rate) is a separate concern, see evals/intake_intent_gate.py.
 
 Follows the provider split from CLAUDE.md: generator logic uses Gemini, same
 as base_generator.py -- this only measures the gate's own decision quality,

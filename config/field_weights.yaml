@@ -1,15 +1,11 @@
-# ASSUMPTION — веса критичных полей для Layer 2 (evals/layer2_document.py).
-# Критичные поля весят больше при расчёте weighted document score
-# и resolution rate / critical error rate.
-#
-# Rationale: an invoice is fundamentally wrong if it bills the wrong person
-# or the wrong amount/items -- clientName and items are what make an invoice
-# unusable without human review if they're incorrect. email/address are
-# contact details: useful, but a human can add or correct them without
-# re-running extraction. CRITICAL_FIELDS in evals/layer2_document.py
-# (clientName, items) is the pair with the highest weight here -- keep them
-# in sync if these numbers change.
-clientName: 0.35
-email: 0.10
-address: 0.10
-items: 0.45
+# NOT USED — was Document Accuracy's per-field weighting scheme (0-1, relative),
+# removed: an invented weighting with no $ grounding wasn't a useful metric on
+# its own (see evals/document_accuracy.py module docstring, conversation record
+# "тогда нужно это называть не весами, а стоимость убытков"). Document Accuracy
+# now reports plain document counts (resolution rate / critical error rate)
+# instead. If a real $ cost per field is ever supplied, it belongs in
+# config/severity_weights.yaml for Business Impact, not here.
+clientName: 0.0
+email: 0.0
+address: 0.0
+items: 0.0

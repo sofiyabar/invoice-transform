@@ -3,9 +3,9 @@ we stopped short) out.
 
 Chains the three generator/ components in the order a real product would
 call them -- until now each had only ever been exercised independently, in
-one-off scripts (scripts/run_layer0_full.py, generate_all.py,
-run_layer0_step2_full.py each hit the API for their own narrow slice and
-never actually called each other):
+one-off scripts (scripts/run_intake_intent_full.py, generate_all.py,
+run_intake_completeness_full.py each hit the API for their own narrow slice
+and never actually called each other):
 
   1. intent_gate.is_invoice_request(text)   -- not an invoice? stop here.
   2. base_generator.parse_invoice_from_text(text) -- extract fields.

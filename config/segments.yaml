@@ -1,4 +1,5 @@
-# ASSUMPTION — таксономия сегментов для Layer 3 (evals/layer3_segment.py)
+# ASSUMPTION — таксономия сегментов для сегментного разреза Document Accuracy
+# (evals/document_accuracy.py::by_group(), бывший отдельный Layer 3)
 # и генерации синтетики (data/synth_generate.py).
 segments:
   - clean

@@ -56,7 +56,7 @@ Layer 0 — фильтр на входе, ДО Layer 1. Только приме�
 
 ### Layer 3 — Segment-level
 
-> **⚠️ Реализовано иначе, чем описано ниже.** В коде отдельного `layer3_segment.py` нет — эта логика слита в `evals/layer2_document.py::by_group()` (см. CLAUDE.md, "Known open decisions" и CHANGELOG.md). Раздел ниже оставлен как исходная постановка задачи, не как актуальная архитектура.
+> **⚠️ Реализовано иначе, чем описано ниже.** В коде отдельного `layer3_segment.py` нет — эта логика слита в `evals/document_accuracy.py::by_group()` (бывший `layer2_document.py`; слои переименованы с номеров на смысловые названия, см. CLAUDE.md, "Known open decisions" и CHANGELOG.md). Раздел ниже оставлен как исходная постановка задачи, не как актуальная архитектура.
 
 Те же метрики (resolution rate, error rate) в разрезе по:
 - сложности входа (чистый / шумный / edge-case)

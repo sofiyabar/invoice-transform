@@ -1,4 +1,4 @@
-"""Layer 0, Step 2: given what generator/base_generator.py already extracted,
+"""Intake Gate, Step 2: given what generator/base_generator.py already extracted,
 is there enough data to actually build an invoice?
 
 Same reasoning as generator/intent_gate.py for placement: this is a production

@@ -1,5 +1,5 @@
-"""DeepEval GEval judge simulating a human reviewer for Layer 4's
-CSAT/thumbs-up-down proxy.
+"""DeepEval GEval judge simulating a human reviewer for Production
+Simulation's CSAT/thumbs-up-down proxy.
 
 IMPORTANT: this is a simulated proxy, not real user feedback — must be
 labeled as such everywhere it's surfaced (README, dashboard).

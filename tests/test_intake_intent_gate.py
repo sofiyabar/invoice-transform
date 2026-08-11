@@ -1,6 +1,6 @@
 import pytest
 
-from evals.layer0_intent_gate import aggregate_intent_scores, score_intent
+from evals.intake_intent_gate import aggregate_intent_scores, score_intent
 
 
 def test_score_intent_true_positive():

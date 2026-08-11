@@ -1,7 +1,13 @@
-# ASSUMPTION — заполнить реальными оценками перед использованием в Layer 6.
-# $ severity per field type: cost of a critical error in this field, used by
-# expected_cost_of_critical_errors in evals/business_layer.py.
-clientName: 0.0
-email: 0.0
-address: 0.0
-items: 0.0
+# ASSUMPTION — confirmed with the user for this portfolio project (see
+# conversation record "переходим к layer 6"), not measured from a real
+# business. $ cost of a critical error in this field, used by
+# _quality_risk_cost() in evals/business_impact.py.
+#
+# clientName/items are the highest -- wrong billing party or wrong charged
+# amount/items are real financial/trust risk. email/address are low --
+# minor, easily corrected by hand (same rationale as CRITICAL_FIELDS in
+# evals/document_accuracy.py).
+clientName: 50
+email: 5
+address: 5
+items: 75

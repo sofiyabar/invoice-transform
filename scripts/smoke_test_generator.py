@@ -3,7 +3,7 @@
 Runs a couple of examples from data/synthetic/eval_dataset.jsonl through the
 real Gemini call and prints raw text / parsed dict / ground truth side by side,
 so we can eyeball whether the API key + parsing actually work before wiring up
-Layer 1 scoring.
+field-accuracy scoring.
 
 Usage: python scripts/smoke_test_generator.py [n]
 """

@@ -1,6 +1,6 @@
-"""Layer 0, Step 2 — Completeness gate scoring: how good is
-generator.completeness_gate's data-sufficiency decision compared to ground
-truth?
+"""Intake Gate, Step 2 (formerly "Layer 0, Step 2") — Completeness gate
+scoring: how good is generator.completeness_gate's data-sufficiency
+decision compared to ground truth?
 
 Ground truth comes from data.schema.SufficiencyGateRecord (loaded via
 data.loaders.load_sufficiency_gate_dataset()) -- only rows where
@@ -9,7 +9,7 @@ sufficiency_label and missing_critical_fields were derived.
 
 This module only scores decisions already made -- generator/completeness_gate.py
 does the actual classification, exactly the same split as Step 1
-(evals/layer0_intent_gate.py + generator/intent_gate.py).
+(evals/intake_intent_gate.py + generator/intent_gate.py).
 
 Per project_brief.md, Step 2 needs two separate metric families:
 
@@ -53,7 +53,7 @@ def score_sufficiency(ground_truth: str, prediction: str) -> dict:
 
 
 def aggregate_sufficiency_scores(per_record: list[dict]) -> dict:
-    """Layer 0 Step 2 sufficiency-label output: accuracy, the two error
+    """Intake Step 2 sufficiency-label output: accuracy, the two error
     directions kept apart, and a full confusion matrix for detail."""
     n = len(per_record)
     if n == 0:

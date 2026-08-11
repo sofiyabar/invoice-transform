@@ -1,9 +1,9 @@
-"""Full Layer 0, Step 1 run: classify every row of eval_dataset.jsonl with
-generator.intent_gate.is_invoice_request, score each against ground truth
-(evals.layer0_intent_gate), and save both per-record results and the
+"""Full Intake Gate, Step 1 run: classify every row of eval_dataset.jsonl
+with generator.intent_gate.is_invoice_request, score each against ground
+truth (evals.intake_intent_gate), and save both per-record results and the
 aggregate accuracy/FP-rate/FN-rate.
 
-Usage: python scripts/run_layer0_full.py [--out PATH] [--workers 10]
+Usage: python scripts/run_intake_intent_full.py [--out PATH] [--workers 10]
 """
 
 import argparse
@@ -16,7 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from data.loaders import load_intent_gate_dataset
-from evals.layer0_intent_gate import aggregate_intent_scores, score_intent
+from evals.intake_intent_gate import aggregate_intent_scores, score_intent
 from generator.intent_gate import is_invoice_request
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -59,7 +59,7 @@ def main() -> None:
     aggregate = aggregate_intent_scores(scored)
 
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    out_path = args.out or (EVAL_RUNS_DIR / f"{run_id}_layer0_intent_gate.json")
+    out_path = args.out or (EVAL_RUNS_DIR / f"{run_id}_intake_intent_gate.json")
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     result = {

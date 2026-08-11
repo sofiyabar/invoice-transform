@@ -1,17 +1,17 @@
-"""Full Layer 0, Step 2 run: score generator.completeness_gate's sufficiency
-decision against ground truth, using the generator predictions already
-collected by scripts/generate_all.py (no new LLM calls -- completeness_gate.py
-is pure code, and reuses the same extraction Layer 1 would use, per the
-design in CHANGELOG.md 2026-08-10).
+"""Full Intake Gate, Step 2 run: score generator.completeness_gate's
+sufficiency decision against ground truth, using the generator predictions
+already collected by scripts/generate_all.py (no new LLM calls --
+completeness_gate.py is pure code, and reuses the same extraction field
+accuracy would use, per the design in CHANGELOG.md 2026-08-10).
 
 Rows are filtered by the MODEL's own Step 1 decision (from a
-run_layer0_full.py results file), not by ground-truth is_invoice_request --
-in production, Step 2 only ever runs on what Step 1 actually let through.
-Scoring against ground-truth-positive rows would silently include the ones
-Step 1 correctly/incorrectly said "no" to and would never reach Step 2 for
-real. See CHANGELOG.md 2026-08-10.
+run_intake_intent_full.py results file), not by ground-truth
+is_invoice_request -- in production, Step 2 only ever runs on what Step 1
+actually let through. Scoring against ground-truth-positive rows would
+silently include the ones Step 1 correctly/incorrectly said "no" to and
+would never reach Step 2 for real. See CHANGELOG.md 2026-08-10.
 
-Usage: python scripts/run_layer0_step2_full.py [--predictions PATH] [--intent-results PATH] [--out PATH]
+Usage: python scripts/run_intake_completeness_full.py [--predictions PATH] [--intent-results PATH] [--out PATH]
 """
 
 import argparse
@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from data.loaders import load_sufficiency_gate_dataset
 from data.schema import InvoiceFields
-from evals.layer0_completeness_gate import (
+from evals.intake_completeness_gate import (
     aggregate_missing_fields_scores,
     aggregate_sufficiency_scores,
     score_missing_fields,
@@ -48,16 +48,16 @@ def load_predictions(path: Path) -> dict[str, dict]:
 
 
 def latest_intent_results() -> Path:
-    matches = sorted(EVAL_RUNS_DIR.glob("*_layer0_intent_gate.json"))
+    matches = sorted(EVAL_RUNS_DIR.glob("*_intake_intent_gate.json"))
     if not matches:
-        raise FileNotFoundError("no *_layer0_intent_gate.json found in eval_runs/ -- run scripts/run_layer0_full.py first")
+        raise FileNotFoundError("no *_intake_intent_gate.json found in eval_runs/ -- run scripts/run_intake_intent_full.py first")
     return matches[-1]
 
 
 def model_predicted_invoice_ids(path: Path) -> set[str]:
     """IDs the MODEL (not ground truth) classified as an invoice request in a
-    run_layer0_full.py run -- these are the only ids Step 2 would ever see in
-    production."""
+    run_intake_intent_full.py run -- these are the only ids Step 2 would
+    ever see in production."""
     with open(path, encoding="utf-8") as f:
         data = json.load(f)
     return {r["id"] for r in data["per_record"] if r.get("ok") and r["prediction"] is True}
@@ -111,7 +111,7 @@ def main() -> None:
     aggregate_missing_fields = aggregate_missing_fields_scores([r["missing_fields"] for r in scored])
 
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    out_path = args.out or (EVAL_RUNS_DIR / f"{run_id}_layer0_completeness_gate.json")
+    out_path = args.out or (EVAL_RUNS_DIR / f"{run_id}_intake_completeness_gate.json")
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     result = {

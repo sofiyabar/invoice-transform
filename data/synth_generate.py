@@ -1,8 +1,8 @@
 """Generate synthetic (raw_text, ground_truth) invoice pairs via Claude.
 
 TODO: implement generation loop over (segment, doc_type) combinations,
-producing InvoiceRecord instances with parallel ground truth for Layer 3
-segmentation.
+producing InvoiceRecord instances with parallel ground truth for the
+segment/doc-type breakdown (evals/document_accuracy.py::by_group()).
 """
 
 from data.schema import DocType, InvoiceRecord, Segment
